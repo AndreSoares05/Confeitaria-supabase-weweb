@@ -1,1 +1,199 @@
+-- =========================
+-- TABELAS
+-- =========================
+
+-- 1. Usuários
+CREATE TABLE usuarios (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    tipo_pessoa VARCHAR(20) NOT NULL, -- 'Física' ou 'Jurídica'
+    nome VARCHAR(100) NOT NULL,
+    sobrenome VARCHAR(100) NOT NULL,
+    cpf VARCHAR(14) UNIQUE NOT NULL,
+    telefone VARCHAR(20) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    senha VARCHAR(255) NOT NULL,
+    criado_em TIMESTAMP DEFAULT NOW()
+);
+
+-- 2. Produtos
+CREATE TABLE produtos (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome VARCHAR(150) NOT NULL,
+    descricao TEXT,
+    preco NUMERIC(10,2) NOT NULL,
+    categoria VARCHAR(50) NOT NULL,
+    estoque INT DEFAULT 0
+);
+
+-- 3. Pedidos
+CREATE TABLE pedidos (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id uuid NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    data_pedido DATE DEFAULT CURRENT_DATE,
+    data_entrega DATE NOT NULL,
+    whatsapp VARCHAR(20),
+    endereco TEXT,
+    cep VARCHAR(10),
+    diametro VARCHAR(20),
+    peso VARCHAR(20),
+    forma VARCHAR(50),
+    massa VARCHAR(100),
+    cobertura VARCHAR(100),
+    recheio1 VARCHAR(100),
+    recheio2 VARCHAR(100),
+    doces VARCHAR(200),
+    topo_nome VARCHAR(100),
+    topo_idade VARCHAR(10),
+    topo_tema VARCHAR(100),
+    topo_obs TEXT,
+    forma_pagamento VARCHAR(20),
+    valor_entrega NUMERIC(10,2) DEFAULT 0,
+    entrada NUMERIC(10,2) DEFAULT 0,
+    restante NUMERIC(10,2) DEFAULT 0,
+    total NUMERIC(10,2) NOT NULL,
+    entrega_ou_retirada VARCHAR(20),
+    anotacoes TEXT,
+    criado_em TIMESTAMP DEFAULT NOW()
+);
+
+-- 4. Itens do Pedido
+CREATE TABLE pedido_itens (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    pedido_id uuid NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+    produto VARCHAR(150) NOT NULL,
+    quantidade INT NOT NULL,
+    valor NUMERIC(10,2) NOT NULL
+);
+
+-- =========================
+-- VIEW
+-- =========================
+CREATE OR REPLACE VIEW view_pedidos_com_clientes AS
+SELECT 
+    p.id AS pedido_id,
+    u.nome || ' ' || u.sobrenome AS cliente,
+    p.data_pedido,
+    p.data_entrega,
+    p.total,
+    p.forma_pagamento,
+    p.entrega_ou_retirada
+FROM pedidos p
+JOIN usuarios u ON p.usuario_id = u.id
+ORDER BY p.data_pedido DESC;
+
+-- =========================
+-- FUNÇÃO
+-- =========================
+CREATE OR REPLACE FUNCTION calcula_total_pedido(p_pedido uuid)
+RETURNS NUMERIC AS $$
+    SELECT COALESCE(SUM(pi.quantidade * pi.valor),0)
+    FROM pedido_itens pi
+    WHERE pi.pedido_id = p_pedido;
+$$ LANGUAGE sql STABLE;
+
+-- =========================
+-- DADOS DE EXEMPLO
+-- =========================
+
+-- Usuários
+INSERT INTO usuarios (tipo_pessoa, nome, sobrenome, cpf, telefone, email, senha)
+VALUES 
+('Física', 'Maria', 'Soares', '123.456.789-00', '(86) 99999-9999', 'maria@email.com', '123456'),
+('Física', 'André', 'Soares', '987.654.321-00', '(86) 98888-8888', 'andre@email.com', '123456'),
+('Física', 'João', 'Pereira', '111.222.333-44', '(86) 97777-7777', 'joao@email.com', '123456');
+
+-- Produtos
+INSERT INTO produtos (nome, descricao, preco, categoria, estoque) VALUES
+('Bolo de Chocolate', 'Bolo caseiro com cobertura de chocolate ao leite', 45.90, 'Bolos', 10),
+('Torta de Morango', 'Torta recheada com creme e cobertura de morangos frescos', 55.00, 'Tortas', 5),
+('Cupcake de Baunilha', 'Cupcake decorado com chantilly e granulado colorido', 6.50, 'Cupcakes', 30),
+('Brigadeiro Gourmet', 'Brigadeiro feito com chocolate belga, unidade', 2.50, 'Doces', 100),
+('Cheesecake de Frutas Vermelhas', 'Cheesecake tradicional com calda de frutas vermelhas', 60.00, 'Tortas', 4),
+('Pão de Mel Recheado', 'Pão de mel com recheio de doce de leite e cobertura de chocolate', 4.50, 'Doces', 50),
+('Bolo Red Velvet', 'Bolo americano com massa vermelha e cobertura de cream cheese', 70.00, 'Bolos', 3),
+('Cookie de Chocolate', 'Cookie crocante com gotas de chocolate', 3.00, 'Biscoitos', 40);
+
+-- Pedido de Maria
+INSERT INTO pedidos (
+    usuario_id, data_entrega, whatsapp, endereco, cep, diametro, peso, forma, massa, cobertura,
+    recheio1, recheio2, doces, topo_nome, topo_idade, topo_tema, topo_obs, forma_pagamento,
+    valor_entrega, entrada, restante, total, entrega_ou_retirada, anotacoes
+)
+VALUES (
+    (SELECT id FROM usuarios WHERE email = 'maria@email.com'),
+    '2025-10-05',
+    '(86) 98888-7777',
+    'Rua das Flores, 123',
+    '64000-000',
+    '20cm', '2kg', 'Redonda',
+    'Chocolate', 'Ganache', 'Brigadeiro', 'Morango', 'Docinhos variados',
+    'Joãozinho', '10', 'Super-heróis', 'Bolo sem chantilly',
+    'Pix', 10.00, 50.00, 90.00, 150.00,
+    'Entrega', 'Entregar até 10h da manhã'
+);
+
+-- Itens do pedido da Maria
+INSERT INTO pedido_itens (pedido_id, produto, quantidade, valor)
+VALUES (
+    (SELECT id FROM pedidos WHERE usuario_id = (SELECT id FROM usuarios WHERE email = 'maria@email.com') LIMIT 1),
+    'Bolo de Chocolate', 1, 120.00
+);
+
+INSERT INTO pedido_itens (pedido_id, produto, quantidade, valor)
+VALUES (
+    (SELECT id FROM pedidos WHERE usuario_id = (SELECT id FROM usuarios WHERE email = 'maria@email.com') LIMIT 1),
+    'Brigadeiro Gourmet', 12, 30.00
+);
+
+-- =========================
+-- CONSULTAS DE TESTE
+-- =========================
+
+-- Listar clientes
+SELECT id, nome, sobrenome, email, telefone FROM usuarios;
+
+-- Listar produtos
+SELECT nome, preco, estoque, categoria FROM produtos;
+
+-- Ver pedidos com clientes (VIEW)
+SELECT * FROM view_pedidos_com_clientes;
+
+-- Calcular total do pedido da Maria (FUNÇÃO)
+SELECT calcula_total_pedido(id) AS total
+FROM pedidos
+WHERE usuario_id = (SELECT id FROM usuarios WHERE email = 'maria@email.com');
+
+-- Listar todos os usuários
+SELECT id, nome, sobrenome, email, telefone, tipo_pessoa, cpf, criado_em
+FROM usuarios
+ORDER BY criado_em DESC;
+
+-- Buscar um usuário específico pelo email
+SELECT * FROM usuarios
+WHERE email = 'maria@email.com';
+
+-- Listar todos os produtos
+SELECT id, nome, categoria, preco, estoque
+FROM produtos
+ORDER BY categoria, nome;
+
+-- Buscar produtos de uma categoria (ex.: Bolos)
+SELECT * FROM produtos
+WHERE categoria = 'Bolos';
+
+-- Listar todos os pedidos com dados básicos
+SELECT id, usuario_id, data_pedido, data_entrega, total, forma_pagamento, entrega_ou_retirada
+FROM pedidos
+ORDER BY data_pedido DESC;
+
+-- Buscar pedidos de um cliente específico (ex.: Maria)
+SELECT p.id, p.data_pedido, p.data_entrega, p.total, p.forma_pagamento
+FROM pedidos p
+JOIN usuarios u ON u.id = p.usuario_id
+WHERE u.email = 'Anderson@gmail.com'
+ORDER BY p.data_pedido DESC;
+
+select * from usuarios;
+
+
 
