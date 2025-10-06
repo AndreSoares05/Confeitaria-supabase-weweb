@@ -74,7 +74,7 @@ O vídeo de demonstração do projeto deve apresentar:
 
 ## 👨‍💻 Autor  
 
-**Projeto deenvolvido por Marcos André dos Santos Soares**  
+**Projeto desenvolvido por Marcos André dos Santos Soares**  
 ---
 
 ⭐ *“Transformando doçura em tecnologia — um bolo por vez!”*
