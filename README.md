@@ -69,7 +69,7 @@ O vídeo de demonstração do projeto deve apresentar:
 ## 🌐 Deploy  
 🔗 [Acesse o site publicado aqui](https://abre.ai/casadedocessoares) 
 
-🎬🔗 [Link youtube](https://youtu.be/4Rc5vtgDXzY) 
+🎬🔗 [Link youtube](https://youtu.be/Hq6k5NQPaF8) 
 
 ---
 
